@@ -1,0 +1,5 @@
+node_modules/
+contracts/pancakeSwap/
+contracts/echidna-test/
+contracts/test/
+contracts/mocks/

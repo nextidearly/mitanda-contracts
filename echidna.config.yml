@@ -1,0 +1,42 @@
+#testMode: assertion
+#filterBlacklist: false
+#filterFunctions: ["TokenTest.testTransfer(address,uint256)"]
+
+#testMode: overflow
+
+testMode: exploration
+
+
+
+# number of sequences of transactions to generate during testing
+testLimit: 50000
+# number of transactions to generate during testing
+seqLen: 100
+# number of tries to attempt to shrink a failing sequence of transactions
+shrinkLimit: 5000
+
+# address to deploy the contract to test
+contractAddr: "0x00a329c0648769a73afac7f9381e08fb43dbea72"
+
+deployer: "0x30000"
+sender: ["0x10000", "0x20000", "0x30000"]
+
+# collect testing information
+corpusDir: null
+
+# maximum amount of seconds of delay between transactions (1 week)
+maxTimeDelay: 604800
+# maximum amount of block numbers between transactions
+maxBlockDelay: 60480
+
+# checks if the contract is self-destructed
+testDestruction: false
+
+# initial balance of the contract
+balanceContract: 0
+# initial balance of accounts
+balanceAddr: 0xffffffff
+
+# max amount of value in each randomly generated transaction (100 ETH)
+maxValue: 100000000000000000000
+
