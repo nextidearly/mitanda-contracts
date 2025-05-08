@@ -3,17 +3,17 @@ const { ethers } = require("hardhat");
 const { time } = require("@nomicfoundation/hardhat-network-helpers");
 
 // Configuration from environment
-const TANDA_MANAGER = "0x1291Fc42FaFFa8d29f2109Ee73fD866E24363808";
+const TANDA_MANAGER = "0xc49661E04dc464efD7954b98bDD707D1fa49DeF4";
 const USDC_ADDRESS = process.env.USDC_ADDRESS;
 const VRF_Coodinator = "0x5C210eF41CD1a72de73bF76eC39637bB0d3d7BEE";
 
 // Participant private keys (replace with actual Sepolia testnet private keys)
 const PARTICIPANT_PRIVATE_KEYS = [
-
+  
 ];
 
-// USDC has 18 decimals
-const USDC_DECIMALS = 18;
+// USDC has 6 decimals
+const USDC_DECIMALS = 6;
 const TEN_USDC = ethers.parseUnits("10", USDC_DECIMALS);
 const TWENTY_USDC = ethers.parseUnits("20", USDC_DECIMALS);
 

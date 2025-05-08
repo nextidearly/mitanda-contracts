@@ -241,46 +241,7 @@ contract Tanda is ReentrancyGuard {
         );
 
         // Complete tanda if all cycles are done
-        if (currentCycle >= participantCount) {
-            state = TandaState.COMPLETED;
-            emit TandaCompleted(block.timestamp);
-        }
-    }
-
-    function triggerPayoutTest() external nonReentrant onlyActiveTanda {
-        // Check if the current recipient is calling
-        address payable recipient = participants[payoutOrder[currentCycle - 1]].addr;
-
-        // Check if payout time has arrived
-        uint256 nextPayoutTime = startTimestamp +
-            (currentCycle * payoutInterval);
-        // require(block.timestamp >= nextPayoutTime, "Payout time not reached");
-
-        // Check all participants are paid up
-        require(_allParticipantsPaid(), "Not all participants have paid");
-        require(payoutOrderAssigned, "Payout order not assigned");
-
-        uint256 payoutAmount = contributionAmount * participantCount;
-        require(
-            usdcToken.balanceOf(address(this)) >= payoutAmount,
-            "Insufficient contract balance"
-        );
-
-        // Update state before transfer
-        currentCycle++;
-        totalFunds -= payoutAmount;
-
-        usdcToken.safeTransfer(recipient, payoutAmount);
-
-        emit PayoutSent(
-            recipient,
-            payoutAmount,
-            currentCycle - 1,
-            block.timestamp
-        );
-
-        // Complete tanda if all cycles are done
-        if (currentCycle >= participantCount) {
+        if (currentCycle > participantCount) {
             state = TandaState.COMPLETED;
             emit TandaCompleted(block.timestamp);
         }
