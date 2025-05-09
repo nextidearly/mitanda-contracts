@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.20;
 
 import "./Tanda.sol";
-import "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
-import "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
+import "./interface/VRFCoordinatorV2_5.sol";
+import "@chainlink/contracts/src/v0.8/vrf/VRFConsumerBaseV2.sol";
 
 contract TandaManager is VRFConsumerBaseV2 {
-    VRFCoordinatorV2Interface private immutable vrfCoordinator;
-    uint64 private immutable subscriptionId;
+    VRFCoordinatorV2_5Interface private immutable vrfCoordinator;
+    uint256 private immutable subscriptionId;
     bytes32 private immutable gasLane;
     uint32 private immutable callbackGasLimit;
     uint16 private constant REQUEST_CONFIRMATIONS = 3;
@@ -34,7 +34,7 @@ contract TandaManager is VRFConsumerBaseV2 {
 
     constructor(
         address _vrfCoordinator,
-        uint64 _subscriptionId,
+        uint256 _subscriptionId,
         bytes32 _gasLane,
         uint32 _callbackGasLimit,
         address _usdcAddress
@@ -42,7 +42,7 @@ contract TandaManager is VRFConsumerBaseV2 {
         require(_vrfCoordinator != address(0), "Invalid VRF coordinator");
         require(_usdcAddress != address(0), "Invalid USDC address");
 
-        vrfCoordinator = VRFCoordinatorV2Interface(_vrfCoordinator);
+        vrfCoordinator = VRFCoordinatorV2_5Interface(_vrfCoordinator);
         subscriptionId = _subscriptionId;
         gasLane = _gasLane;
         callbackGasLimit = _callbackGasLimit;
