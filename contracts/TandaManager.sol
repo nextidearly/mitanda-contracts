@@ -78,7 +78,8 @@ contract TandaManager is VRFConsumerBaseV2 {
             _payoutInterval,
             _participantCount,
             _gracePeriod,
-            address(this)
+            address(this),
+            msg.sender
         );
         
         tandaIdToAddress[tandaId] = address(tanda);

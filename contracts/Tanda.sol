@@ -33,6 +33,7 @@ contract Tanda is ReentrancyGuard {
     uint16 public immutable participantCount;
     ITandaManager public immutable manager;
     IERC20 public immutable usdcToken;
+    address public immutable creator;
 
     TandaState public state;
     uint256 public startTimestamp;
@@ -52,11 +53,18 @@ contract Tanda is ReentrancyGuard {
     event TandaStarted(uint256 startTimestamp, uint256 initialCycle);
     event PayoutOrderAssigned(uint256[] order, uint256 timestamp);
     event TandaCompleted(uint256 completionTimestamp);
+    event TandaRestarted(uint256 restartTimestamp);
 
     modifier onlyManager() {
         require(msg.sender == address(manager), "Caller is not manager");
         _;
     }
+
+    modifier onlyCreator() {
+        require(msg.sender == address(creator), "Caller is not creator");
+        _;
+    }
+
 
     modifier onlyParticipant() {
         require(isParticipant(msg.sender), "Caller is not participant");
@@ -73,19 +81,26 @@ contract Tanda is ReentrancyGuard {
         _;
     }
 
+    modifier onlyCompletedTanda() {
+        require(state == TandaState.COMPLETED, "Tanda is not completed");
+        _;
+    }
+
     constructor(
         uint256 _tandaId,
         uint256 _contributionAmount,
         uint256 _payoutInterval,
         uint16 _participantCount,
         uint256 _gracePeriod,
-        address _manager
+        address _manager,
+        address _creator
     ) {
         require(_contributionAmount > 0, "Contribution amount must be > 0");
         require(_payoutInterval > 0, "Payout interval must be > 0");
         require(_participantCount >= 2, "Minimum 2 participants required");
         require(_gracePeriod > 0, "Grace period must be > 0");
         require(_manager != address(0), "Invalid manager address");
+        require(_creator != address(0), "Invalid creator address");
 
         tandaId = _tandaId;
         contributionAmount = _contributionAmount;
@@ -95,6 +110,7 @@ contract Tanda is ReentrancyGuard {
         manager = ITandaManager(_manager);
         usdcToken = IERC20(manager.getUsdcAddress());
         state = TandaState.OPEN;
+        creator = _creator;
     }
 
     /**
@@ -131,6 +147,7 @@ contract Tanda is ReentrancyGuard {
      * @param cyclesToPay Number of cycles to pay for
      */
     function makePayment(uint256 cyclesToPay) external onlyParticipant onlyActiveTanda {
+        require(state == TandaState.ACTIVE, "Tanda is not active");
         require(cyclesToPay > 0, "Must pay for at least 1 cycle");
 
         uint256 participantIndex = addressToParticipantIndex[msg.sender] - 1;
@@ -138,10 +155,14 @@ contract Tanda is ReentrancyGuard {
         
         require(participant.isActive, "Participant is inactive");
 
+        // Calculate maximum cycles that can be paid for without overpaying
+        uint256 maxCyclesCanPay = participantCount - participant.paidUntilCycle + 1;
+        require(cyclesToPay <= maxCyclesCanPay, "Cannot pay beyond total cycles");
+
         uint256 totalPayment = contributionAmount * cyclesToPay;
         usdcToken.safeTransferFrom(msg.sender, address(this), totalPayment);
 
-        participant.paidUntilCycle = currentCycle + cyclesToPay;
+        participant.paidUntilCycle += cyclesToPay;
         participant.hasPaid = true;
         totalFunds += totalPayment;
 
@@ -177,7 +198,7 @@ contract Tanda is ReentrancyGuard {
 
     // ==================== Manager Functions ====================
 
-    function enterGracePeriod(address participant) external onlyManager onlyActiveTanda {
+    function enterGracePeriod(address participant) external onlyCreator onlyActiveTanda {
         uint256 participantIndex = addressToParticipantIndex[participant] - 1;
         require(participantIndex < participants.length, "Invalid participant");
 
@@ -188,7 +209,7 @@ contract Tanda is ReentrancyGuard {
         emit GracePeriodEntered(participant, currentCycle, block.timestamp);
     }
 
-    function removeDefaultedParticipant(address participant) external onlyManager onlyActiveTanda {
+    function removeDefaultedParticipant(address participant) external onlyCreator onlyActiveTanda {
         uint256 participantIndex = addressToParticipantIndex[participant] - 1;
         require(participantIndex < participants.length, "Invalid participant");
 
@@ -200,7 +221,8 @@ contract Tanda is ReentrancyGuard {
         emit ParticipantRemoved(participant, currentCycle, block.timestamp);
     }
 
-    function assignPayoutOrder(uint256 randomSeed) external onlyManager {
+//***
+    function assignPayoutOrder(uint256 randomSeed) external onlyCreator {
         require(!payoutOrderAssigned, "Payout order already assigned");
         require(participants.length == participantCount, "Not all participants joined");
 
@@ -221,6 +243,30 @@ contract Tanda is ReentrancyGuard {
         emit PayoutOrderAssigned(payoutOrder, block.timestamp);
     }
 
+    /**
+     * @notice Restart the tanda after completion
+     * @dev Can only be called by manager after tanda is completed
+     */
+    function restartTanda() external onlyCreator onlyCompletedTanda {
+        // Reset state
+        state = TandaState.OPEN;
+        startTimestamp = 0;
+        currentCycle = 0;
+        totalFunds = 0;
+        payoutOrderAssigned = false;
+        delete payoutOrder;
+
+        // Reset participants
+        for (uint256 i = 0; i < participants.length; i++) {
+            participants[i].hasPaid = false;
+            participants[i].paidUntilCycle = 0;
+            participants[i].isActive = true;
+            participants[i].payoutOrder = 0;
+        }
+
+        emit TandaRestarted(block.timestamp);
+    }
+
     // ==================== Internal Functions ====================
 
     function _startTanda() private {
@@ -229,7 +275,7 @@ contract Tanda is ReentrancyGuard {
         currentCycle = 1;
         
         emit TandaStarted(startTimestamp, currentCycle);
-        manager.requestRandomnessForTanda(tandaId);
+        // manager.requestRandomnessForTanda(tandaId);
     }
 
     function _allParticipantsPaid() private view returns (bool) {

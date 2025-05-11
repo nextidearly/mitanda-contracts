@@ -23,15 +23,14 @@ const config: HardhatUserConfig = {
       }
     }
   },
-  defaultNetwork: "hardhat",
   networks: {
-    hardhat: {
-      chainId: 31337,
-      allowUnlimitedContractSize: false,
-    },
     localhost: {
-      chainId: 31337,
-      allowUnlimitedContractSize: false,
+      chainId: 31337, // Explicitly set chainId
+      allowUnlimitedContractSize: true, // Useful for large contracts
+      mining: {
+        auto: true, // Auto-mining enabled by default
+        interval: 5000 // Optional: mine a block every 5 seconds
+      }
     },
     baseSepolia: {
       url: process.env.BASE_SEPOLIA_RPC_URL || "",
