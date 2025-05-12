@@ -3,8 +3,9 @@ const { ethers } = require("hardhat");
 const { time } = require("@nomicfoundation/hardhat-network-helpers");
 
 // Configuration from environment
-const TANDA_MANAGER = "0x2D8E0A1470bbFeECE27007E152D57146Fd580992";
+const TANDA_MANAGER = "0x439Ea10dF3A7B8091aA66204DaDF47af80a57547";
 const USDC_ADDRESS = process.env.USDC_ADDRESS;
+const VRF_Coodinator = "0x5C210eF41CD1a72de73bF76eC39637bB0d3d7BEE";
 
 // Participant private keys (replace with actual Sepolia testnet private keys)
 const PARTICIPANT_PRIVATE_KEYS = [
@@ -23,8 +24,19 @@ const TWENTY_USDC = ethers.parseUnits("20", USDC_DECIMALS);
 describe("Tanda Protocol", function () {
   let tandaManager;
   let usdc;
-  let owner, participant1, participant2, participant3, participant4;
+  let owner, participant1, participant2, participant3, participant4, participant5;
   let nextTandaId;
+
+
+  const addConsumer = async (consumer) => {
+    try {
+      const coodinator = await ethers.getContractAt("Tanda", VRF_Coodinator);
+      const tx = coodinator.connect(participant5).addConsumer(process.env.CHAINLINK_SUBSCRIPTION_ID, consumer);
+      await tx.wait();
+    } catch (error) {
+      console.log(error);
+    }
+  }
 
   before(async function () {
     [owner] = await ethers.getSigners();
@@ -41,6 +53,8 @@ describe("Tanda Protocol", function () {
 
     // Get the actual next Tanda ID before any tests run
     nextTandaId = await tandaManager.nextTandaId();
+
+    // await addConsumer(tandaManager.TANDA_MANAGER);
 
     // Get USDC contract
     usdc = await ethers.getContractAt("IERC20", USDC_ADDRESS);
@@ -82,7 +96,7 @@ describe("Tanda Protocol", function () {
       } catch (err) {
         expect(err.message).to.include("Minimum contribution 10 USDC");
       }
-  
+
       // Test minimum participants (2)
       try {
         const tx2 = await tandaManager.createTanda(
@@ -96,7 +110,7 @@ describe("Tanda Protocol", function () {
       } catch (err) {
         expect(err.message).to.include("Minimum 2 participants");
       }
-  
+
       // Test maximum participants (50)
       try {
         const tx3 = await tandaManager.createTanda(
@@ -164,7 +178,7 @@ describe("Tanda Protocol", function () {
           expect(err.message).to.include("Already joined this tanda");
         }
       });
-  
+
       it("should join remaining participants", async function () {
         // Participant 2
         const approve_tx_1 = await usdc.connect(participant2).approve(tandaAddress, TEN_USDC);
@@ -216,7 +230,7 @@ describe("Tanda Protocol", function () {
           const cyclesToPay = await tanda.participantCount() + 1n;
           const approve_tx = await usdc.connect(participant2).approve(tandaAddress, TEN_USDC * cyclesToPay);
           await approve_tx.wait();
-          
+
           const tx = await tanda.connect(participant2).makePayment(cyclesToPay);
           await tx.wait();
           throw new Error("Should have reverted");
@@ -242,7 +256,7 @@ describe("Tanda Protocol", function () {
     //     // Complete the tanda first (simplified for test)
     //     await tanda.connect(owner).assignPayoutOrder(12345);
     //     await time.increase(1 * 24 * 60 * 60);
-        
+
     //     // Make all participants pay
     //     for (let i = 0; i < 4; i++) {
     //       const participant = participants[i];
@@ -251,20 +265,20 @@ describe("Tanda Protocol", function () {
     //       const tx = await tanda.connect(participant).makePayment(4);
     //       await tx.wait();
     //     }
-        
+
     //     // Fast forward through all cycles
     //     for (let i = 0; i < 4; i++) {
     //       await time.increase(1 * 24 * 60 * 60);
     //       await tanda.triggerPayout();
     //     }
-        
+
     //     // Verify completed
     //     expect(await tanda.state()).to.equal(2); // COMPLETED
-        
+
     //     // Restart the tanda
     //     const restartTx = await tanda.connect(owner).restartTanda();
     //     await restartTx.wait();
-        
+
     //     // Verify restarted
     //     expect(await tanda.state()).to.equal(0); // OPEN
     //     expect(await tanda.startTimestamp()).to.equal(0);
