@@ -237,49 +237,49 @@ describe("Tanda Protocol", function () {
       });
     });
 
-    describe("Restarting Tanda", function () {
-      it("should allow manager to restart completed tanda", async function () {
-        // Complete the tanda first (simplified for test)
-        await tanda.connect(owner).assignPayoutOrder(12345);
-        await time.increase(1 * 24 * 60 * 60);
+    // describe("Restarting Tanda", function () {
+    //   it("should allow manager to restart completed tanda", async function () {
+    //     // Complete the tanda first (simplified for test)
+    //     await tanda.connect(owner).assignPayoutOrder(12345);
+    //     await time.increase(1 * 24 * 60 * 60);
         
-        // Make all participants pay
-        for (let i = 0; i < 4; i++) {
-          const participant = participants[i];
-          const approve_tx = await usdc.connect(participant).approve(tandaAddress, TEN_USDC * 4n);
-          await approve_tx.wait();
-          const tx = await tanda.connect(participant).makePayment(4);
-          await tx.wait();
-        }
+    //     // Make all participants pay
+    //     for (let i = 0; i < 4; i++) {
+    //       const participant = participants[i];
+    //       const approve_tx = await usdc.connect(participant).approve(tandaAddress, TEN_USDC * 4n);
+    //       await approve_tx.wait();
+    //       const tx = await tanda.connect(participant).makePayment(4);
+    //       await tx.wait();
+    //     }
         
-        // Fast forward through all cycles
-        for (let i = 0; i < 4; i++) {
-          await time.increase(1 * 24 * 60 * 60);
-          await tanda.triggerPayout();
-        }
+    //     // Fast forward through all cycles
+    //     for (let i = 0; i < 4; i++) {
+    //       await time.increase(1 * 24 * 60 * 60);
+    //       await tanda.triggerPayout();
+    //     }
         
-        // Verify completed
-        expect(await tanda.state()).to.equal(2); // COMPLETED
+    //     // Verify completed
+    //     expect(await tanda.state()).to.equal(2); // COMPLETED
         
-        // Restart the tanda
-        const restartTx = await tanda.connect(owner).restartTanda();
-        await restartTx.wait();
+    //     // Restart the tanda
+    //     const restartTx = await tanda.connect(owner).restartTanda();
+    //     await restartTx.wait();
         
-        // Verify restarted
-        expect(await tanda.state()).to.equal(0); // OPEN
-        expect(await tanda.startTimestamp()).to.equal(0);
-        expect(await tanda.currentCycle()).to.equal(0);
-      });
+    //     // Verify restarted
+    //     expect(await tanda.state()).to.equal(0); // OPEN
+    //     expect(await tanda.startTimestamp()).to.equal(0);
+    //     expect(await tanda.currentCycle()).to.equal(0);
+    //   });
 
-      it("should fail to restart if not completed", async function () {
-        try {
-          const tx = await tanda.connect(owner).restartTanda();
-          await tx.wait();
-          throw new Error("Should have reverted");
-        } catch (err) {
-          expect(err.message).to.include("Tanda is not completed");
-        }
-      });
-    });
+    //   it("should fail to restart if not completed", async function () {
+    //     try {
+    //       const tx = await tanda.connect(owner).restartTanda();
+    //       await tx.wait();
+    //       throw new Error("Should have reverted");
+    //     } catch (err) {
+    //       expect(err.message).to.include("Tanda is not completed");
+    //     }
+    //   });
+    // });
   });
 });

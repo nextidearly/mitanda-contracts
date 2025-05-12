@@ -2,16 +2,17 @@
 pragma solidity ^0.8.20;
 
 import "./Tanda.sol";
-import "./interface/VRFCoordinatorV2_5.sol";
-import "@chainlink/contracts/src/v0.8/vrf/VRFConsumerBaseV2.sol";
 
-contract TandaManager is VRFConsumerBaseV2 {
-    VRFCoordinatorV2_5Interface private immutable vrfCoordinator;
-    uint256 private immutable subscriptionId;
-    bytes32 private immutable gasLane;
-    uint32 private immutable callbackGasLimit;
-    uint16 private constant REQUEST_CONFIRMATIONS = 3;
-    uint32 private constant NUM_WORDS = 1;
+import {VRFConsumerBaseV2Plus} from "@chainlink/contracts/src/v0.8/vrf/dev/VRFConsumerBaseV2Plus.sol";
+import {VRFV2PlusClient} from "@chainlink/contracts/src/v0.8/vrf/dev/libraries/VRFV2PlusClient.sol";
+
+contract TandaManager is VRFConsumerBaseV2Plus {
+    uint256 private subscriptionId;
+    bytes32 private gasLane;
+    uint32 private callbackGasLimit;
+    uint16 private requestConfirmations = 3;
+    uint32 private numWords = 1;
+    bool private nativePayment = true;
 
     address public immutable usdcAddress;
     uint256 public nextTandaId;
@@ -29,8 +30,19 @@ contract TandaManager is VRFConsumerBaseV2 {
         uint256 gracePeriod,
         address creator
     );
-    event RandomnessRequested(uint256 indexed tandaId, uint256 indexed requestId);
+    event RandomnessRequested(
+        uint256 indexed tandaId,
+        uint256 indexed requestId
+    );
     event PayoutOrderAssigned(uint256 indexed tandaId);
+    event VRFConfigUpdated(
+        uint256 newSubscriptionId,
+        bytes32 newGasLane,
+        uint32 newCallbackGasLimit,
+        uint16 newRequestConfirmations,
+        uint32 newNumWords,
+        bool newNativePayment
+    );
 
     constructor(
         address _vrfCoordinator,
@@ -38,15 +50,48 @@ contract TandaManager is VRFConsumerBaseV2 {
         bytes32 _gasLane,
         uint32 _callbackGasLimit,
         address _usdcAddress
-    ) VRFConsumerBaseV2(_vrfCoordinator) {
+    ) VRFConsumerBaseV2Plus(_vrfCoordinator) {
         require(_vrfCoordinator != address(0), "Invalid VRF coordinator");
         require(_usdcAddress != address(0), "Invalid USDC address");
 
-        vrfCoordinator = VRFCoordinatorV2_5Interface(_vrfCoordinator);
         subscriptionId = _subscriptionId;
         gasLane = _gasLane;
         callbackGasLimit = _callbackGasLimit;
         usdcAddress = _usdcAddress;
+    }
+
+    /**
+     * @notice Update VRF configuration parameters
+     * @param _subscriptionId New subscription ID
+     * @param _gasLane New gas lane key hash
+     * @param _callbackGasLimit New callback gas limit
+     * @param _requestConfirmations New number of request confirmations
+     * @param _numWords New number of random words to request
+     * @param _nativePayment Whether to pay for VRF in native token or LINK
+     */
+    function updateVRFConfig(
+        uint256 _subscriptionId,
+        bytes32 _gasLane,
+        uint32 _callbackGasLimit,
+        uint16 _requestConfirmations,
+        uint32 _numWords,
+        bool _nativePayment
+    ) external onlyOwner {
+        subscriptionId = _subscriptionId;
+        gasLane = _gasLane;
+        callbackGasLimit = _callbackGasLimit;
+        requestConfirmations = _requestConfirmations;
+        numWords = _numWords;
+        nativePayment = _nativePayment;
+
+        emit VRFConfigUpdated(
+            _subscriptionId,
+            _gasLane,
+            _callbackGasLimit,
+            _requestConfirmations,
+            _numWords,
+            _nativePayment
+        );
     }
 
     /**
@@ -63,7 +108,10 @@ contract TandaManager is VRFConsumerBaseV2 {
         uint16 _participantCount,
         uint256 _gracePeriod
     ) external returns (uint256) {
-        require(_contributionAmount >= 10 * 10**6, "Minimum contribution 10 USDC"); // 10 USDC (6 decimals)
+        require(
+            _contributionAmount >= 10 * 10 ** 6,
+            "Minimum contribution 10 USDC"
+        ); // 10 USDC (6 decimals)
         require(_payoutInterval >= 1 days, "Minimum interval 1 day");
         require(_payoutInterval <= 30 days, "Maximum interval 30 days");
         require(_participantCount >= 2, "Minimum 2 participants");
@@ -81,7 +129,7 @@ contract TandaManager is VRFConsumerBaseV2 {
             address(this),
             msg.sender
         );
-        
+
         tandaIdToAddress[tandaId] = address(tanda);
         activeTandas[tandaId] = true;
 
@@ -106,16 +154,42 @@ contract TandaManager is VRFConsumerBaseV2 {
         require(tandaIdToAddress[tandaId] == msg.sender, "Caller is not Tanda");
         require(activeTandas[tandaId], "Tanda is not active");
 
-        uint256 requestId = vrfCoordinator.requestRandomWords(
-            gasLane,
-            subscriptionId,
-            REQUEST_CONFIRMATIONS,
-            callbackGasLimit,
-            NUM_WORDS
+        uint256 requestId = s_vrfCoordinator.requestRandomWords(
+            VRFV2PlusClient.RandomWordsRequest({
+                keyHash: gasLane,
+                subId: subscriptionId,
+                requestConfirmations: requestConfirmations,
+                callbackGasLimit: callbackGasLimit,
+                numWords: numWords,
+                extraArgs: VRFV2PlusClient._argsToBytes(
+                    VRFV2PlusClient.ExtraArgsV1({nativePayment: nativePayment})
+                )
+            })
         );
+
         vrfRequestIdToTandaId[requestId] = tandaId;
 
         emit RandomnessRequested(tandaId, requestId);
+    }
+
+    /**
+     * @notice Request randomness for payout order assignment (test function)
+     */
+    function requestRandomnessForTandaTest() public returns (uint256) {
+        uint256 requestId = s_vrfCoordinator.requestRandomWords(
+            VRFV2PlusClient.RandomWordsRequest({
+                keyHash: gasLane,
+                subId: subscriptionId,
+                requestConfirmations: requestConfirmations,
+                callbackGasLimit: callbackGasLimit,
+                numWords: numWords,
+                extraArgs: VRFV2PlusClient._argsToBytes(
+                    VRFV2PlusClient.ExtraArgsV1({nativePayment: nativePayment})
+                )
+            })
+        );
+
+        return requestId;
     }
 
     /**
@@ -123,7 +197,10 @@ contract TandaManager is VRFConsumerBaseV2 {
      * @param requestId ID of the randomness request
      * @param randomWords Array of random values
      */
-    function fulfillRandomWords(uint256 requestId, uint256[] memory randomWords) internal override {
+    function fulfillRandomWords(
+        uint256 requestId,
+        uint256[] calldata randomWords
+    ) internal override {
         uint256 tandaId = vrfRequestIdToTandaId[requestId];
         require(tandaIdToAddress[tandaId] != address(0), "Invalid Tanda ID");
 
@@ -192,12 +269,18 @@ contract TandaManager is VRFConsumerBaseV2 {
      * @return participantCount Number of participants
      * @return gracePeriod Grace period in seconds
      */
-    function getTandaParameters(uint256 tandaId) external view returns (
-        uint256 contributionAmount,
-        uint256 payoutInterval,
-        uint16 participantCount,
-        uint256 gracePeriod
-    ) {
+    function getTandaParameters(
+        uint256 tandaId
+    )
+        external
+        view
+        returns (
+            uint256 contributionAmount,
+            uint256 payoutInterval,
+            uint16 participantCount,
+            uint256 gracePeriod
+        )
+    {
         address tandaAddress = tandaIdToAddress[tandaId];
         require(tandaAddress != address(0), "Invalid Tanda ID");
 
@@ -207,6 +290,37 @@ contract TandaManager is VRFConsumerBaseV2 {
             tanda.payoutInterval(),
             tanda.participantCount(),
             tanda.gracePeriod()
+        );
+    }
+
+    /**
+     * @notice Get current VRF configuration
+     * @return Current subscription ID
+     * @return Current gas lane
+     * @return Current callback gas limit
+     * @return Current request confirmations
+     * @return Current number of words
+     * @return Current native payment setting
+     */
+    function getVRFConfig()
+        external
+        view
+        returns (
+            uint256,
+            bytes32,
+            uint32,
+            uint16,
+            uint32,
+            bool
+        )
+    {
+        return (
+            subscriptionId,
+            gasLane,
+            callbackGasLimit,
+            requestConfirmations,
+            numWords,
+            nativePayment
         );
     }
 }

@@ -7,6 +7,7 @@ interface VRFCoordinatorV2_5Interface {
         uint256 subId,
         uint16 minimumRequestConfirmations,
         uint32 callbackGasLimit,
-        uint32 numWords
+        uint32 numWords,
+        bytes memory extraArgs
     ) external returns (uint256 requestId);
 }

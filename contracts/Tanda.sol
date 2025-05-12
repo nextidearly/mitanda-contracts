@@ -221,8 +221,7 @@ contract Tanda is ReentrancyGuard {
         emit ParticipantRemoved(participant, currentCycle, block.timestamp);
     }
 
-//***
-    function assignPayoutOrder(uint256 randomSeed) external onlyCreator {
+    function assignPayoutOrder(uint256 randomSeed) external onlyManager {
         require(!payoutOrderAssigned, "Payout order already assigned");
         require(participants.length == participantCount, "Not all participants joined");
 
@@ -275,7 +274,7 @@ contract Tanda is ReentrancyGuard {
         currentCycle = 1;
         
         emit TandaStarted(startTimestamp, currentCycle);
-        // manager.requestRandomnessForTanda(tandaId);
+        manager.requestRandomnessForTanda(tandaId);
     }
 
     function _allParticipantsPaid() private view returns (bool) {
