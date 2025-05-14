@@ -3,18 +3,12 @@ const { ethers } = require("hardhat");
 const { time } = require("@nomicfoundation/hardhat-network-helpers");
 
 // Configuration from environment
-const TANDA_MANAGER = "0x439Ea10dF3A7B8091aA66204DaDF47af80a57547";
+const TANDA_MANAGER = "0x293c1bEEb49A8a29CCc56C79d4496b79dF1B4F85";
 const USDC_ADDRESS = process.env.USDC_ADDRESS;
 const VRF_Coodinator = "0x5C210eF41CD1a72de73bF76eC39637bB0d3d7BEE";
 
 // Participant private keys (replace with actual Sepolia testnet private keys)
-const PARTICIPANT_PRIVATE_KEYS = [
-  "0xd839a1820eee4aaf4616bd391d333a14a3c6969d59c8a2fa90545a400bc36d79",
-  "0xd534a32f008bd8f1e6c97871aacc49fbf6401c5cb97d92f3e9f60e75aea14bc1",
-  "0x5824fc8e81b599914deb127a5beaaf63db2cf27394f53bf54530ae333e1a2273",
-  "0x692a156372cb8114aec9c5740baa17405f8bf48a8cef88469f4a231145791190",
-  "0x28c69fcf47b6e1a231ae8b31220d8deada0a34b2d387868c4fdcf350498b32c3"
-];
+
 
 // USDC has 18 decimals
 const USDC_DECIMALS = 18;
@@ -26,17 +20,6 @@ describe("Tanda Protocol", function () {
   let usdc;
   let owner, participant1, participant2, participant3, participant4, participant5;
   let nextTandaId;
-
-
-  const addConsumer = async (consumer) => {
-    try {
-      const coodinator = await ethers.getContractAt("Tanda", VRF_Coodinator);
-      const tx = coodinator.connect(participant5).addConsumer(process.env.CHAINLINK_SUBSCRIPTION_ID, consumer);
-      await tx.wait();
-    } catch (error) {
-      console.log(error);
-    }
-  }
 
   before(async function () {
     [owner] = await ethers.getSigners();
@@ -253,45 +236,18 @@ describe("Tanda Protocol", function () {
 
     // describe("Restarting Tanda", function () {
     //   it("should allow manager to restart completed tanda", async function () {
-    //     // Complete the tanda first (simplified for test)
-    //     await tanda.connect(owner).assignPayoutOrder(12345);
-    //     await time.increase(1 * 24 * 60 * 60);
-
-    //     // Make all participants pay
-    //     for (let i = 0; i < 4; i++) {
-    //       const participant = participants[i];
-    //       const approve_tx = await usdc.connect(participant).approve(tandaAddress, TEN_USDC * 4n);
-    //       await approve_tx.wait();
-    //       const tx = await tanda.connect(participant).makePayment(4);
-    //       await tx.wait();
-    //     }
-
-    //     // Fast forward through all cycles
-    //     for (let i = 0; i < 4; i++) {
-    //       await time.increase(1 * 24 * 60 * 60);
-    //       await tanda.triggerPayout();
-    //     }
-
-    //     // Verify completed
-    //     expect(await tanda.state()).to.equal(2); // COMPLETED
-
-    //     // Restart the tanda
-    //     const restartTx = await tanda.connect(owner).restartTanda();
-    //     await restartTx.wait();
-
-    //     // Verify restarted
-    //     expect(await tanda.state()).to.equal(0); // OPEN
-    //     expect(await tanda.startTimestamp()).to.equal(0);
-    //     expect(await tanda.currentCycle()).to.equal(0);
-    //   });
-
-    //   it("should fail to restart if not completed", async function () {
     //     try {
-    //       const tx = await tanda.connect(owner).restartTanda();
+    //       console.log('-----started----');
+          
+    //       const tanda = await ethers.getContractAt("Tanda", "0xce2b1C9443d5C7e0c592667dD4165EfDC5BF9dbF");
+    //       console.log(await tanda.currentCycle());
+    //       const tx = await tanda.triggerPayout();
+    //       console.log(tx);
+          
     //       await tx.wait();
-    //       throw new Error("Should have reverted");
-    //     } catch (err) {
-    //       expect(err.message).to.include("Tanda is not completed");
+    //     } catch (error) {
+    //       console.log(error);
+          
     //     }
     //   });
     // });

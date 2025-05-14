@@ -14,6 +14,7 @@
     "typescript": "^5.8.3"
   },
   "dependencies": {
+    "@coinbase/onchainkit": "^0.38.13",
     "@nomicfoundation/hardhat-chai-matchers": "^2.0.8"
   }
 }

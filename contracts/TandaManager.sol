@@ -6,6 +6,31 @@ import "./Tanda.sol";
 import {VRFConsumerBaseV2Plus} from "@chainlink/contracts/src/v0.8/vrf/dev/VRFConsumerBaseV2Plus.sol";
 import {VRFV2PlusClient} from "@chainlink/contracts/src/v0.8/vrf/dev/libraries/VRFV2PlusClient.sol";
 
+struct GeneralInfo {
+    uint256 tandaId;
+    uint256 contributionAmount;
+    uint256 payoutInterval;
+    uint16 participantCount;
+    uint256 gracePeriod;
+    address creator;
+    address usdcTokenAddress;
+    address managerAddress;
+    address tandaAddress;
+}
+
+struct CurrentStatus {
+    Tanda.TandaState state;
+    uint256 currentCycle;
+    uint256 totalParticipants;
+    uint256 totalFunds;
+    uint256 nextPayoutTimestamp;
+    uint256 startTimestamp;
+    bool payoutOrderAssigned;
+    bool isActive;
+    bool isOpen;
+    bool isCompleted;
+}
+
 contract TandaManager is VRFConsumerBaseV2Plus {
     uint256 private subscriptionId;
     bytes32 private gasLane;
@@ -111,7 +136,7 @@ contract TandaManager is VRFConsumerBaseV2Plus {
         require(
             _contributionAmount >= 10 * 10 ** 6,
             "Minimum contribution 10 USDC"
-        ); // 10 USDC (6 decimals)
+        );
         require(_payoutInterval >= 1 days, "Minimum interval 1 day");
         require(_payoutInterval <= 30 days, "Maximum interval 30 days");
         require(_participantCount >= 2, "Minimum 2 participants");
@@ -175,7 +200,11 @@ contract TandaManager is VRFConsumerBaseV2Plus {
     /**
      * @notice Request randomness for payout order assignment (test function)
      */
-    function requestRandomnessForTandaTest() public returns (uint256) {
+    function requestRandomnessForTandaTest(
+        uint256 tandaId
+    ) public returns (uint256) {
+        require(activeTandas[tandaId], "Tanda is not active");
+
         uint256 requestId = s_vrfCoordinator.requestRandomWords(
             VRFV2PlusClient.RandomWordsRequest({
                 keyHash: gasLane,
@@ -188,6 +217,8 @@ contract TandaManager is VRFConsumerBaseV2Plus {
                 )
             })
         );
+
+        vrfRequestIdToTandaId[requestId] = tandaId;
 
         return requestId;
     }
@@ -262,35 +293,70 @@ contract TandaManager is VRFConsumerBaseV2Plus {
     }
 
     /**
-     * @notice Get Tanda creation parameters
+     * @notice Get comprehensive Tanda data for frontend display
      * @param tandaId ID of the Tanda
-     * @return contributionAmount USDC contribution amount
-     * @return payoutInterval Payout interval in seconds
-     * @return participantCount Number of participants
-     * @return gracePeriod Grace period in seconds
+     * @return generalInfo Struct containing general Tanda information
+     * @return currentStatus Struct containing current status information
+     * @return payoutOrderInfo Array of payout order (if assigned)
      */
-    function getTandaParameters(
+    function getTandaData(
         uint256 tandaId
     )
         external
         view
         returns (
-            uint256 contributionAmount,
-            uint256 payoutInterval,
-            uint16 participantCount,
-            uint256 gracePeriod
+            GeneralInfo memory generalInfo,
+            CurrentStatus memory currentStatus,
+            uint256[] memory payoutOrderInfo
         )
     {
         address tandaAddress = tandaIdToAddress[tandaId];
         require(tandaAddress != address(0), "Invalid Tanda ID");
 
         Tanda tanda = Tanda(tandaAddress);
-        return (
-            tanda.contributionAmount(),
-            tanda.payoutInterval(),
-            tanda.participantCount(),
-            tanda.gracePeriod()
-        );
+
+        // General information (static)
+        generalInfo = GeneralInfo({
+            tandaId: tandaId,
+            contributionAmount: tanda.contributionAmount(),
+            payoutInterval: tanda.payoutInterval(),
+            participantCount: tanda.participantCount(),
+            gracePeriod: tanda.gracePeriod(),
+            creator: tanda.creator(),
+            usdcTokenAddress: address(tanda.usdcToken()),
+            managerAddress: address(tanda.manager()),
+            tandaAddress: tandaAddress
+        });
+
+        // Current status (dynamic)
+        (
+            Tanda.TandaState state,
+            uint256 cycle,
+            uint256 participantsCount,
+            uint256 funds,
+            uint256 nextPayout
+        ) = tanda.getTandaSummary();
+
+        currentStatus = CurrentStatus({
+            state: state,
+            currentCycle: cycle,
+            totalParticipants: participantsCount,
+            totalFunds: funds,
+            nextPayoutTimestamp: nextPayout,
+            startTimestamp: tanda.startTimestamp(),
+            payoutOrderAssigned: tanda.payoutOrderAssigned(),
+            isActive: tanda.state() == Tanda.TandaState.ACTIVE,
+            isOpen: tanda.state() == Tanda.TandaState.OPEN,
+            isCompleted: tanda.state() == Tanda.TandaState.COMPLETED
+        });
+
+        // Participants information
+        Tanda.Participant[] memory participants = tanda.getAllParticipants();
+
+        // Payout order information (if assigned)
+        payoutOrderInfo = tanda.payoutOrderAssigned()
+            ? tanda.getPayoutOrder()
+            : new uint256[](0);
     }
 
     /**
@@ -305,14 +371,7 @@ contract TandaManager is VRFConsumerBaseV2Plus {
     function getVRFConfig()
         external
         view
-        returns (
-            uint256,
-            bytes32,
-            uint32,
-            uint16,
-            uint32,
-            bool
-        )
+        returns (uint256, bytes32, uint32, uint16, uint32, bool)
     {
         return (
             subscriptionId,
