@@ -176,7 +176,6 @@ contract Tanda is ReentrancyGuard {
     function makePayment(
         uint256 cyclesToPay
     ) external onlyParticipant onlyActiveTanda {
-        require(state == TandaState.ACTIVE, "Tanda is not active");
         require(cyclesToPay > 0, "Must pay for at least 1 cycle");
 
         uint256 participantIndex = addressToParticipantIndex[msg.sender] - 1;
@@ -184,10 +183,7 @@ contract Tanda is ReentrancyGuard {
 
         require(participant.isActive, "Participant is inactive");
 
-        // Calculate maximum cycles that can be paid for without overpaying
-        uint256 maxCyclesCanPay = participantCount -
-            participant.paidUntilCycle +
-            1;
+        uint256 maxCyclesCanPay = participantCount - participant.paidUntilCycle;
         require(
             cyclesToPay <= maxCyclesCanPay,
             "Cannot pay beyond total cycles"
@@ -212,22 +208,26 @@ contract Tanda is ReentrancyGuard {
      * @notice Trigger payout for current cycle
      * @dev Can be called by anyone when conditions are met
      */
-    function triggerPayoutTest() external nonReentrant onlyActiveTanda {
-        require(
-            block.timestamp >= startTimestamp + (currentCycle * payoutInterval),
-            "Current cycle not completed"
-        );
+    function triggerPayout() external nonReentrant onlyActiveTanda {
+        // Check if the current recipient is calling
+        address payable recipient = participants[payoutOrder[currentCycle - 1]].addr;
+
+        // Check if payout time has arrived
+        uint256 nextPayoutTime = startTimestamp +
+            (currentCycle * payoutInterval);
+        require(block.timestamp >= nextPayoutTime, "Payout time not reached");
+
+        // Check all participants are paid up
         require(_allParticipantsPaid(), "Not all participants have paid");
         require(payoutOrderAssigned, "Payout order not assigned");
 
-        uint256 payoutIndex = currentCycle % participantCount;
-        address payable recipient = participants[payoutOrder[payoutIndex]].addr;
         uint256 payoutAmount = contributionAmount * participantCount;
-
         require(
             usdcToken.balanceOf(address(this)) >= payoutAmount,
             "Insufficient contract balance"
         );
+
+        // Update state before transfer
         currentCycle++;
         totalFunds -= payoutAmount;
 
@@ -240,24 +240,33 @@ contract Tanda is ReentrancyGuard {
             block.timestamp
         );
 
+        // Complete tanda if all cycles are done
         if (currentCycle >= participantCount) {
             state = TandaState.COMPLETED;
             emit TandaCompleted(block.timestamp);
         }
     }
 
-    function triggerPayout() external nonReentrant onlyActiveTanda {
+    function triggerPayoutTest() external nonReentrant onlyActiveTanda {
+        // Check if the current recipient is calling
+        address payable recipient = participants[payoutOrder[currentCycle - 1]].addr;
+
+        // Check if payout time has arrived
+        uint256 nextPayoutTime = startTimestamp +
+            (currentCycle * payoutInterval);
+        // require(block.timestamp >= nextPayoutTime, "Payout time not reached");
+
+        // Check all participants are paid up
         require(_allParticipantsPaid(), "Not all participants have paid");
         require(payoutOrderAssigned, "Payout order not assigned");
 
-        uint256 payoutIndex = currentCycle % participantCount;
-        address payable recipient = participants[payoutOrder[payoutIndex]].addr;
         uint256 payoutAmount = contributionAmount * participantCount;
-
         require(
             usdcToken.balanceOf(address(this)) >= payoutAmount,
             "Insufficient contract balance"
         );
+
+        // Update state before transfer
         currentCycle++;
         totalFunds -= payoutAmount;
 
@@ -270,6 +279,7 @@ contract Tanda is ReentrancyGuard {
             block.timestamp
         );
 
+        // Complete tanda if all cycles are done
         if (currentCycle >= participantCount) {
             state = TandaState.COMPLETED;
             emit TandaCompleted(block.timestamp);
@@ -331,6 +341,11 @@ contract Tanda is ReentrancyGuard {
             (payoutOrder[i], payoutOrder[j]) = (payoutOrder[j], payoutOrder[i]);
         }
 
+        // Update participant payoutOrder values
+        for (uint256 i = 0; i < participantCount; i++) {
+            participants[payoutOrder[i]].payoutOrder = i;
+        }
+
         payoutOrderAssigned = true;
         emit PayoutOrderAssigned(payoutOrder, block.timestamp);
     }
@@ -370,13 +385,9 @@ contract Tanda is ReentrancyGuard {
         manager.requestRandomnessForTanda(tandaId);
     }
 
-    function _allParticipantsPaid() private view returns (bool) {
+    function _allParticipantsPaid() internal view returns (bool) {
         for (uint256 i = 0; i < participants.length; i++) {
-            if (
-                participants[i].isActive &&
-                (participants[i].paidUntilCycle <= currentCycle ||
-                    !participants[i].hasPaid)
-            ) {
+            if (participants[i].isActive && !participants[i].hasPaid) {
                 return false;
             }
         }
@@ -431,8 +442,7 @@ contract Tanda is ReentrancyGuard {
     {
         cycleNumber = currentCycle;
         if (payoutOrderAssigned && participants.length > 0) {
-            uint256 payoutIndex = currentCycle % participantCount;
-            payoutAddress = participants[payoutOrder[payoutIndex]].addr;
+            payoutAddress = participants[payoutOrder[currentCycle - 1]].addr;
             payoutAmount = contributionAmount * participantCount;
         }
     }
@@ -488,19 +498,5 @@ contract Tanda is ReentrancyGuard {
     function getPayoutOrder() external view returns (uint256[] memory) {
         require(payoutOrderAssigned, "Payout order not assigned");
         return payoutOrder;
-    }
-
-    function isPayoutCycleReady()
-        external
-        view
-        returns (bool, uint256, uint256, uint256)
-    {
-        uint256 targetTime = startTimestamp + (currentCycle * payoutInterval);
-        return (
-            block.timestamp >= targetTime,
-            block.timestamp,
-            startTimestamp,
-            targetTime
-        );
     }
 }

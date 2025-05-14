@@ -3,12 +3,14 @@ const { ethers } = require("hardhat");
 const { time } = require("@nomicfoundation/hardhat-network-helpers");
 
 // Configuration from environment
-const TANDA_MANAGER = "0x293c1bEEb49A8a29CCc56C79d4496b79dF1B4F85";
+const TANDA_MANAGER = "0x52a4ebA00f8db724b74584A715689bAf87d86948";
 const USDC_ADDRESS = process.env.USDC_ADDRESS;
 const VRF_Coodinator = "0x5C210eF41CD1a72de73bF76eC39637bB0d3d7BEE";
 
 // Participant private keys (replace with actual Sepolia testnet private keys)
+const PARTICIPANT_PRIVATE_KEYS = [
 
+];
 
 // USDC has 18 decimals
 const USDC_DECIMALS = 18;
@@ -234,22 +236,24 @@ describe("Tanda Protocol", function () {
       });
     });
 
-    // describe("Restarting Tanda", function () {
-    //   it("should allow manager to restart completed tanda", async function () {
-    //     try {
-    //       console.log('-----started----');
+    describe("Restarting Tanda", function () {
+      it("should allow manager to restart completed tanda", async function () {
+        try {
+          console.log('-----started----');
           
-    //       const tanda = await ethers.getContractAt("Tanda", "0xce2b1C9443d5C7e0c592667dD4165EfDC5BF9dbF");
-    //       console.log(await tanda.currentCycle());
-    //       const tx = await tanda.triggerPayout();
-    //       console.log(tx);
+          const tanda = await ethers.getContractAt("Tanda", "0x5ba4c56439fefaaeC6f2d79caD41ceB3e02E6Df3");
+          console.log(await tanda.currentCycle());
+          console.log(await tanda.isPayoutCycleReady());
+
+          // const tx = await tanda.triggerPayoutTest();
+          console.log(tx);
           
-    //       await tx.wait();
-    //     } catch (error) {
-    //       console.log(error);
+          await tx.wait();
+        } catch (error) {
+          console.log(error);
           
-    //     }
-    //   });
-    // });
+        }
+      });
+    });
   });
 });
