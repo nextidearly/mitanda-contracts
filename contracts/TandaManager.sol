@@ -29,6 +29,7 @@ struct CurrentStatus {
     bool isActive;
     bool isOpen;
     bool isCompleted;
+    uint256 participantListLength;
 }
 
 contract TandaManager is VRFConsumerBaseV2Plus {
@@ -337,6 +338,9 @@ contract TandaManager is VRFConsumerBaseV2Plus {
             uint256 nextPayout
         ) = tanda.getTandaSummary();
 
+        // Participants information
+        Tanda.Participant[] memory participants = tanda.getAllParticipants();
+
         currentStatus = CurrentStatus({
             state: state,
             currentCycle: cycle,
@@ -347,11 +351,9 @@ contract TandaManager is VRFConsumerBaseV2Plus {
             payoutOrderAssigned: tanda.payoutOrderAssigned(),
             isActive: tanda.state() == Tanda.TandaState.ACTIVE,
             isOpen: tanda.state() == Tanda.TandaState.OPEN,
-            isCompleted: tanda.state() == Tanda.TandaState.COMPLETED
+            isCompleted: tanda.state() == Tanda.TandaState.COMPLETED,
+            participantListLength: participants.length
         });
-
-        // Participants information
-        Tanda.Participant[] memory participants = tanda.getAllParticipants();
 
         // Payout order information (if assigned)
         payoutOrderInfo = tanda.payoutOrderAssigned()

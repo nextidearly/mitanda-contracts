@@ -3,7 +3,7 @@ const { ethers } = require("hardhat");
 const { time } = require("@nomicfoundation/hardhat-network-helpers");
 
 // Configuration from environment
-const TANDA_MANAGER = "0x52a4ebA00f8db724b74584A715689bAf87d86948";
+const TANDA_MANAGER = "0x461001A726c1Ca7CC0481A4DBC8D742fFB462508";
 const USDC_ADDRESS = process.env.USDC_ADDRESS;
 const VRF_Coodinator = "0x5C210eF41CD1a72de73bF76eC39637bB0d3d7BEE";
 
