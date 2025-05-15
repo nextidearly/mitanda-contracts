@@ -468,7 +468,7 @@ contract Tanda is ReentrancyGuard {
     {
         currentState = state;
         cycle = currentCycle;
-        participantsCount = participants.length;
+        participantsCount = participantCount;
         funds = totalFunds;
         nextPayout = state == TandaState.ACTIVE
             ? startTimestamp + (currentCycle * payoutInterval)
