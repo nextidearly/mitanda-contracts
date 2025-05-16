@@ -257,8 +257,7 @@ contract Tanda is ReentrancyGuard {
 
         Participant storage p = participants[participantIndex];
         require(p.isActive, "Participant is inactive");
-        require(
-            !p.hasPaid && p.paidUntilCycle <= currentCycle,
+        require(p.paidUntilCycle < currentCycle,
             "Participant not in default"
         );
 
@@ -273,12 +272,11 @@ contract Tanda is ReentrancyGuard {
 
         Participant storage p = participants[participantIndex];
         require(p.isActive, "Participant is inactive");
-        require(
-            !p.hasPaid && p.paidUntilCycle <= currentCycle,
+        require(p.paidUntilCycle < currentCycle,
             "Participant not in default"
         );
 
-        p.isActive = false;
+        // p.isActive = false;s
         emit ParticipantRemoved(participant, currentCycle, block.timestamp);
     }
 
@@ -348,7 +346,7 @@ contract Tanda is ReentrancyGuard {
 
     function _allParticipantsPaid() internal view returns (bool) {
         for (uint256 i = 0; i < participants.length; i++) {
-            if (participants[i].isActive && !participants[i].hasPaid) {
+            if (participants[i].isActive && participants[i].paidUntilCycle < currentCycle) {
                 return false;
             }
         }

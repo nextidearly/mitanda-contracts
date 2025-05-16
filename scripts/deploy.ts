@@ -18,6 +18,13 @@ const CHAIN_CONFIGS: Record<number, ChainConfig> = {
     usdcAddress: process.env.USDC_ADDRESS || "",
     subscriptionId: process.env.CHAINLINK_SUBSCRIPTION_ID || "",
   },
+  8453: {
+    vrfCoordinator: process.env.VRF_COORDINATOR || "",
+    gasLane: process.env.GAS_LANE || "",
+    callbackGasLimit: process.env.CALLBACK_GAS_LIMIT || "",
+    usdcAddress: process.env.USDC_ADDRESS || "",
+    subscriptionId: process.env.CHAINLINK_SUBSCRIPTION_ID || "",
+  }
 };
 
 const deployTandaManager: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
