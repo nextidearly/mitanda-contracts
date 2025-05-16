@@ -9,7 +9,11 @@ const VRF_Coodinator = "0x5C210eF41CD1a72de73bF76eC39637bB0d3d7BEE";
 
 // Participant private keys (replace with actual Sepolia testnet private keys)
 const PARTICIPANT_PRIVATE_KEYS = [
-
+  "0xd839a1820eee4aaf4616bd391d333a14a3c6969d59c8a2fa90545a400bc36d79",
+  "0xd534a32f008bd8f1e6c97871aacc49fbf6401c5cb97d92f3e9f60e75aea14bc1",
+  "0x5824fc8e81b599914deb127a5beaaf63db2cf27394f53bf54530ae333e1a2273",
+  "0x692a156372cb8114aec9c5740baa17405f8bf48a8cef88469f4a231145791190",
+  "0x28c69fcf47b6e1a231ae8b31220d8deada0a34b2d387868c4fdcf350498b32c3"
 ];
 
 // USDC has 6 decimals
